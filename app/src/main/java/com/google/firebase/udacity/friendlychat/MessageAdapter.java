@@ -10,10 +10,12 @@ import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
-public class MessageAdapter extends ArrayAdapter<FriendlyMessage> {
-    public MessageAdapter(Context context, int resource, List<FriendlyMessage> objects) {
+public class MessageAdapter extends ArrayAdapter<FriendlyMessageReceived> {
+    public MessageAdapter(Context context, int resource, List<FriendlyMessageReceived> objects) {
         super(context, resource, objects);
     }
 
@@ -26,8 +28,9 @@ public class MessageAdapter extends ArrayAdapter<FriendlyMessage> {
         ImageView photoImageView = (ImageView) convertView.findViewById(R.id.photoImageView);
         TextView messageTextView = (TextView) convertView.findViewById(R.id.messageTextView);
         TextView authorTextView = (TextView) convertView.findViewById(R.id.nameTextView);
+        TextView timeTextView = (TextView) convertView.findViewById(R.id.timeTextView);
 
-        FriendlyMessage message = getItem(position);
+        FriendlyMessageReceived message = getItem(position);
 
         boolean isPhoto = message.getPhotoUrl() != null;
         if (isPhoto) {
@@ -42,7 +45,10 @@ public class MessageAdapter extends ArrayAdapter<FriendlyMessage> {
             messageTextView.setText(message.getText());
         }
         authorTextView.setText(message.getName());
-
+        Date mDate = new Date(message.getTime());
+        SimpleDateFormat sdfDate = new SimpleDateFormat("hh:mm:ss a dd/MM/yyyy");
+        String strDate = sdfDate.format(mDate);
+        timeTextView.setText(strDate);
         return convertView;
     }
 }

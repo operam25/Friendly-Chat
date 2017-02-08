@@ -1,27 +1,16 @@
-/**
- * Copyright Google Inc. All Rights Reserved.
- * <p/>
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * <p/>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p/>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.google.firebase.udacity.friendlychat;
 
+import android.content.ContentResolver;
 import android.content.Intent;
+import android.database.Cursor;
 import android.os.Bundle;
+import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -41,6 +30,7 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -62,9 +52,11 @@ public class MainActivity extends AppCompatActivity {
     private Button mSendButton;
 
     private String mUsername;
+    private String mReceiverName;
 
     private FirebaseDatabase mFirebaseDatabase;
     private DatabaseReference mMessagesDatabaseReference;
+    private DatabaseReference mUsersDatabaseReference;
     private ChildEventListener mChildEventListener;
     private FirebaseAuth mFirebaseAuth;
     private FirebaseAuth.AuthStateListener mAuthStateListener;
@@ -75,10 +67,12 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         mUsername = ANONYMOUS;
+        mReceiverName = ANONYMOUS;
 
         mFirebaseDatabase = FirebaseDatabase.getInstance();
         mFirebaseAuth = FirebaseAuth.getInstance();
         mMessagesDatabaseReference = mFirebaseDatabase.getReference().child("messages");
+        mUsersDatabaseReference = mFirebaseDatabase.getReference().child("users");
 
         // Initialize references to views
         mProgressBar = (ProgressBar) findViewById(R.id.progressBar);
@@ -88,7 +82,7 @@ public class MainActivity extends AppCompatActivity {
         mSendButton = (Button) findViewById(R.id.sendButton);
 
         // Initialize message ListView and its adapter
-        List<FriendlyMessage> friendlyMessages = new ArrayList<>();
+        List<FriendlyMessageReceived> friendlyMessages = new ArrayList<>();
         mMessageAdapter = new MessageAdapter(this, R.layout.item_message, friendlyMessages);
         mMessageListView.setAdapter(mMessageAdapter);
 
@@ -128,7 +122,7 @@ public class MainActivity extends AppCompatActivity {
         mSendButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                FriendlyMessage friendlyMessage = new FriendlyMessage(mMessageEditText.getText().toString(), mUsername, null);
+                FriendlyMessage friendlyMessage = new FriendlyMessage(mMessageEditText.getText().toString(), mUsername, null, mReceiverName);
                 mMessagesDatabaseReference.push().setValue(friendlyMessage);
 
                 // Clear input box
@@ -149,7 +143,8 @@ public class MainActivity extends AppCompatActivity {
                                     .createSignInIntentBuilder()
                                     .setIsSmartLockEnabled(false)
                                     .setProviders(Arrays.asList(new AuthUI.IdpConfig.Builder(AuthUI.EMAIL_PROVIDER).build(),
-                                            new AuthUI.IdpConfig.Builder(AuthUI.GOOGLE_PROVIDER).build()))
+                                            new AuthUI.IdpConfig.Builder(AuthUI.GOOGLE_PROVIDER).build(),
+                                            new AuthUI.IdpConfig.Builder(AuthUI.FACEBOOK_PROVIDER).build()))
                                     .build(),
                             RC_SIGN_IN);
                 }
@@ -157,12 +152,64 @@ public class MainActivity extends AppCompatActivity {
         };
     }
 
+    public ArrayList<String> getNameEmailDetails(){
+        ArrayList<String> names = new ArrayList<String>();
+        ContentResolver cr = getContentResolver();
+        Cursor cur = cr.query(ContactsContract.Contacts.CONTENT_URI,null, null, null, null);
+        if (cur.getCount() > 0) {
+            while (cur.moveToNext()) {
+                String id = cur.getString(cur.getColumnIndex(ContactsContract.Contacts._ID));
+                Cursor cur1 = cr.query(
+                        ContactsContract.CommonDataKinds.Email.CONTENT_URI, null,
+                        ContactsContract.CommonDataKinds.Email.CONTACT_ID + " = ?",
+                        new String[]{id}, null);
+                while (cur1.moveToNext()) {
+                    //to get the contact names
+                    String name=cur1.getString(cur1.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));
+                    Log.e("Name :", name);
+                    String email = cur1.getString(cur1.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA));
+                    Log.e("Email", email);
+                    if(email!=null){
+                        names.add(name);
+                    }
+                }
+                cur1.close();
+            }
+        }
+        return names;
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if(requestCode == RC_SIGN_IN){
             if(resultCode == RESULT_OK){
-                Toast.makeText(MainActivity.this,"Sign in success",Toast.LENGTH_SHORT).show();
+                final FirebaseUser user = mFirebaseAuth.getCurrentUser();
+                Toast.makeText(MainActivity.this,user.getDisplayName() + " Signed in successfully",Toast.LENGTH_SHORT).show();
+                mUsersDatabaseReference.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        boolean exist = false;
+                        assert user.getEmail() != null;
+                        String mail = user.getEmail();
+                        mail = mail.replace(".","");
+                        for(DataSnapshot data: dataSnapshot.getChildren()){
+                            if(data.child(mail).exists()){
+                                exist = true;
+                                break;
+                            }
+                        }
+                        if(exist == false){
+                            UserList userList = new UserList(user.getDisplayName(),mail);
+                            mUsersDatabaseReference.push().setValue(userList);
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+
+                    }
+                });
             }else if(resultCode == RESULT_CANCELED){
                 Toast.makeText(MainActivity.this,"Sign in cancelled",Toast.LENGTH_SHORT).show();
                 finish();
@@ -210,13 +257,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void attachDatabaseReadListener(){
-        if(mAuthStateListener == null) {
+        if(mChildEventListener == null) {
             mChildEventListener = new ChildEventListener() {
                 @Override
                 public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                    FriendlyMessage friendlyMessage = dataSnapshot.getValue(FriendlyMessage.class);
-                    mMessageAdapter.add(friendlyMessage);
-                }
+                    FriendlyMessageReceived friendlyMessageReceived = dataSnapshot.getValue(FriendlyMessageReceived.class);
+                    mMessageAdapter.add(friendlyMessageReceived);
+            }
 
                 @Override
                 public void onChildChanged(DataSnapshot dataSnapshot, String s) {
@@ -245,12 +292,13 @@ public class MainActivity extends AppCompatActivity {
     private void onSignedOutCleanUP(){
         mUsername = ANONYMOUS;
         mMessageAdapter.clear();
+        detachDatabaseReadListener();
     }
 
     private void detachDatabaseReadListener(){
-        if(mAuthStateListener != null) {
-            mFirebaseAuth.removeAuthStateListener(mAuthStateListener);
-            mAuthStateListener = null;
+        if(mChildEventListener != null) {
+            mMessagesDatabaseReference.removeEventListener(mChildEventListener);
+            mChildEventListener = null;
         }
     }
 

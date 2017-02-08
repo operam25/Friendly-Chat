@@ -1,26 +1,26 @@
 package com.google.firebase.udacity.friendlychat;
 
-import com.google.firebase.database.ServerValue;
+/**
+ * Created by khandelwal on 08/02/17.
+ */
 
-import java.util.Map;
-
-public class FriendlyMessage {
+public class FriendlyMessageReceived {
 
     private String text;
     private String name;
     private String receiverName;
     private String photoUrl;
-    private Map time;
+    private Long time;
 
-    public FriendlyMessage() {
+    public FriendlyMessageReceived() {
     }
 
-    public FriendlyMessage(String text, String name, String photoUrl, String receiverName) {
+    public FriendlyMessageReceived(String text, String name, String photoUrl, String receiverName, Long time) {
         this.text = text;
         this.name = name;
         this.receiverName = receiverName;
         this.photoUrl = photoUrl;
-        this.time = ServerValue.TIMESTAMP;
+        this.time = time;
     }
 
     public String getText() {
@@ -55,11 +55,11 @@ public class FriendlyMessage {
         this.receiverName = receiverName;
     }
 
-    public Map getTime() {
+    public Long getTime() {
         return time;
     }
 
-    public void setTime(Map time) {
+    public void setTime(Long time) {
         this.time = time;
     }
 

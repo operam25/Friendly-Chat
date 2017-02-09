@@ -21,16 +21,18 @@ public class MessageAdapter extends ArrayAdapter<FriendlyMessageReceived> {
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-        if (convertView == null) {
+
+        FriendlyMessageReceived message = getItem(position);
+
+        if (!message.getName().isEmpty()) {
             convertView = ((Activity) getContext()).getLayoutInflater().inflate(R.layout.item_message, parent, false);
+        }else {
+            convertView = ((Activity) getContext()).getLayoutInflater().inflate(R.layout.item_send_message, parent, false);
         }
 
         ImageView photoImageView = (ImageView) convertView.findViewById(R.id.photoImageView);
         TextView messageTextView = (TextView) convertView.findViewById(R.id.messageTextView);
-        TextView authorTextView = (TextView) convertView.findViewById(R.id.nameTextView);
         TextView timeTextView = (TextView) convertView.findViewById(R.id.timeTextView);
-
-        FriendlyMessageReceived message = getItem(position);
 
         boolean isPhoto = message.getPhotoUrl() != null;
         if (isPhoto) {
@@ -44,9 +46,8 @@ public class MessageAdapter extends ArrayAdapter<FriendlyMessageReceived> {
             photoImageView.setVisibility(View.GONE);
             messageTextView.setText(message.getText());
         }
-        authorTextView.setText(message.getName());
         Date mDate = new Date(message.getTime());
-        SimpleDateFormat sdfDate = new SimpleDateFormat("hh:mm:ss a dd/MM/yyyy");
+        SimpleDateFormat sdfDate = new SimpleDateFormat("hh:mm:ss a d/M/yy");
         String strDate = sdfDate.format(mDate);
         timeTextView.setText(strDate);
         return convertView;

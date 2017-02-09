@@ -31,7 +31,7 @@
         android:layout_below="@+id/receiverNameText"
         android:divider="@android:color/transparent"
         android:transcriptMode="alwaysScroll"
-        android:dividerHeight="2dp"
+        android:dividerHeight="5dp"
         tools:listitem="@layout/item_message"/>
 
     <LinearLayout

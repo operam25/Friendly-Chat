@@ -3,31 +3,36 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginLeft="@dimen/activity_horizontal_margin"
-    android:layout_marginStart="@dimen/activity_horizontal_margin"
-    android:layout_gravity="left|start"
+    android:layout_marginRight="@dimen/activity_horizontal_margin"
+    android:layout_marginEnd="@dimen/activity_horizontal_margin"
     android:orientation="vertical"
     >
 
     <LinearLayout
         android:layout_width="8dp"
         android:layout_height="10dp"
-        android:background="@drawable/tri_shape"
         />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
         android:weightSum="100"
         >
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="20"
+            />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
             android:layout_weight="80"
             android:background="@color/tw__composer_light_gray"
             android:padding="5dp"
-            android:orientation="vertical"
             >
 
             <ImageView
@@ -42,6 +47,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="0"
+                android:layout_gravity="left|start"
                 android:textAppearance="?android:attr/textAppearanceLarge"
                 tools:text="Message"
                 />
@@ -50,18 +56,21 @@
                 android:id="@+id/timeTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="0"
                 android:layout_gravity="right|end"
+                android:layout_weight="0"
                 android:textAppearance="?android:attr/textAppearanceSmall"
                 tools:text="time"
                 />
-
         </LinearLayout>
+
+
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="8dp"
         android:layout_height="10dp"
+        android:layout_gravity="end|right"
+        android:background="@drawable/tri_send_shape"
         />
 
 </LinearLayout>

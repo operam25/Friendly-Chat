@@ -2,22 +2,20 @@ package com.google.firebase.udacity.friendlychat;
 
 import android.content.ContentResolver;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.text.Editable;
-import android.text.InputFilter;
-import android.text.TextWatcher;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ImageButton;
+import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
@@ -34,6 +32,7 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -41,21 +40,14 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
 
     public static final String ANONYMOUS = "anonymous";
-    public static final int DEFAULT_MSG_LENGTH_LIMIT = 1000;
     public static final int RC_SIGN_IN = 1;
 
-    private ListView mMessageListView;
-    private MessageAdapter mMessageAdapter;
+    private UserAdapter mUserAdapter;
     private ProgressBar mProgressBar;
-    private ImageButton mPhotoPickerButton;
-    private EditText mMessageEditText;
-    private Button mSendButton;
-
+    private ListView mUserListView;
     private String mUsername;
-    private String mReceiverName;
 
     private FirebaseDatabase mFirebaseDatabase;
-    private DatabaseReference mMessagesDatabaseReference;
     private DatabaseReference mUsersDatabaseReference;
     private ChildEventListener mChildEventListener;
     private FirebaseAuth mFirebaseAuth;
@@ -66,77 +58,33 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+
         mUsername = ANONYMOUS;
-        mReceiverName = ANONYMOUS;
 
         mFirebaseDatabase = FirebaseDatabase.getInstance();
         mFirebaseAuth = FirebaseAuth.getInstance();
-        mMessagesDatabaseReference = mFirebaseDatabase.getReference().child("messages");
         mUsersDatabaseReference = mFirebaseDatabase.getReference().child("users");
 
         // Initialize references to views
         mProgressBar = (ProgressBar) findViewById(R.id.progressBar);
-        mMessageListView = (ListView) findViewById(R.id.messageListView);
-        mPhotoPickerButton = (ImageButton) findViewById(R.id.photoPickerButton);
-        mMessageEditText = (EditText) findViewById(R.id.messageEditText);
-        mSendButton = (Button) findViewById(R.id.sendButton);
+        mUserListView = (ListView) findViewById(R.id.userListView);
 
         // Initialize message ListView and its adapter
-        List<FriendlyMessageReceived> friendlyMessages = new ArrayList<>();
-        mMessageAdapter = new MessageAdapter(this, R.layout.item_message, friendlyMessages);
-        mMessageListView.setAdapter(mMessageAdapter);
+        List<UserList> userLists = new ArrayList<>();
+        mUserAdapter = new UserAdapter(this, R.layout.item_user, userLists);
+        mUserListView.setAdapter(mUserAdapter);
 
         // Initialize progress bar
         mProgressBar.setVisibility(ProgressBar.INVISIBLE);
 
-        // ImagePickerButton shows an image picker to upload a image for a message
-        mPhotoPickerButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                // TODO: Fire an intent to show an image picker
-            }
-        });
-
-        // Enable Send button when there's text to send
-        mMessageEditText.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                if (charSequence.toString().trim().length() > 0) {
-                    mSendButton.setEnabled(true);
-                } else {
-                    mSendButton.setEnabled(false);
-                }
-            }
-
-            @Override
-            public void afterTextChanged(Editable editable) {
-            }
-        });
-        mMessageEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(DEFAULT_MSG_LENGTH_LIMIT)});
-
-        // Send button sends a message and clears the EditText
-        mSendButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                FriendlyMessage friendlyMessage = new FriendlyMessage(mMessageEditText.getText().toString(), mUsername, null, mReceiverName);
-                mMessagesDatabaseReference.push().setValue(friendlyMessage);
-
-                // Clear input box
-                mMessageEditText.setText("");
-            }
-        });
 
         mAuthStateListener = new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
                 FirebaseUser user = mFirebaseAuth.getCurrentUser();
-                if(user != null){
-                    onSignedInInitialize(user.getDisplayName());
-                }else {
+                if (user != null) {
+                    onSignedInInitialize(user.getEmail().replace(".", ""));
+                } else {
                     onSignedOutCleanUP();
                     startActivityForResult(
                             AuthUI.getInstance()
@@ -150,12 +98,33 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         };
+
+        mUserListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                Intent intent = new Intent(MainActivity.this, ChatRoom.class);
+                intent.putExtra("receiver", mUserAdapter.getItem(position).getEmail());
+                intent.putExtra("sender", mUsername);
+                startActivity(intent);
+            }
+        });
+
     }
 
-    public ArrayList<String> getNameEmailDetails(){
-        ArrayList<String> names = new ArrayList<String>();
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if(requestCode == 9){
+            if(grantResults[0] != -1)
+                attachDatabaseReadListener();
+        }
+
+    }
+
+    public HashMap<String, String> getNameEmailDetails(){
+        HashMap<String, String> names = new HashMap<String, String>();
         ContentResolver cr = getContentResolver();
-        Cursor cur = cr.query(ContactsContract.Contacts.CONTENT_URI,null, null, null, null);
+        Cursor cur = cr.query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null);
         if (cur.getCount() > 0) {
             while (cur.moveToNext()) {
                 String id = cur.getString(cur.getColumnIndex(ContactsContract.Contacts._ID));
@@ -165,12 +134,10 @@ public class MainActivity extends AppCompatActivity {
                         new String[]{id}, null);
                 while (cur1.moveToNext()) {
                     //to get the contact names
-                    String name=cur1.getString(cur1.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));
-                    Log.e("Name :", name);
+                    String name = cur1.getString(cur1.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));
                     String email = cur1.getString(cur1.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA));
-                    Log.e("Email", email);
-                    if(email!=null){
-                        names.add(name);
+                    if (email != null) {
+                        names.put(email.replace(".", ""), name);
                     }
                 }
                 cur1.close();
@@ -194,12 +161,13 @@ public class MainActivity extends AppCompatActivity {
                         String mail = user.getEmail();
                         mail = mail.replace(".","");
                         for(DataSnapshot data: dataSnapshot.getChildren()){
-                            if(data.child(mail).exists()){
+                            UserList users = data.getValue(UserList.class);
+                            if(users.getEmail().contains(mail)){
                                 exist = true;
                                 break;
                             }
                         }
-                        if(exist == false){
+                        if(!exist){
                             UserList userList = new UserList(user.getDisplayName(),mail);
                             mUsersDatabaseReference.push().setValue(userList);
                         }
@@ -248,22 +216,32 @@ public class MainActivity extends AppCompatActivity {
             mFirebaseAuth.removeAuthStateListener(mAuthStateListener);
         }
         detachDatabaseReadListener();
-        mMessageAdapter.clear();
+        mUserAdapter.clear();
     }
 
     private void onSignedInInitialize(String name){
         mUsername = name;
-        attachDatabaseReadListener();
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{android.Manifest.permission.READ_CONTACTS},9);
+        }else {
+            attachDatabaseReadListener();
+        }
     }
 
     private void attachDatabaseReadListener(){
+        final HashMap<String,String> contactList = getNameEmailDetails();
+        Log.d("userList",contactList.toString());
         if(mChildEventListener == null) {
             mChildEventListener = new ChildEventListener() {
                 @Override
                 public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                    FriendlyMessageReceived friendlyMessageReceived = dataSnapshot.getValue(FriendlyMessageReceived.class);
-                    mMessageAdapter.add(friendlyMessageReceived);
-            }
+                    UserList userList = dataSnapshot.getValue(UserList.class);
+                    if(contactList.containsKey(userList.getEmail())) {
+                        userList.setName(contactList.get(userList.getEmail()));
+                        mUserAdapter.add(userList);
+                    }
+                    mUserAdapter.notifyDataSetChanged();
+                }
 
                 @Override
                 public void onChildChanged(DataSnapshot dataSnapshot, String s) {
@@ -285,19 +263,19 @@ public class MainActivity extends AppCompatActivity {
 
                 }
             };
-            mMessagesDatabaseReference.addChildEventListener(mChildEventListener);
+            mUsersDatabaseReference.addChildEventListener(mChildEventListener);
         }
     }
 
     private void onSignedOutCleanUP(){
         mUsername = ANONYMOUS;
-        mMessageAdapter.clear();
+        mUserAdapter.clear();
         detachDatabaseReadListener();
     }
 
     private void detachDatabaseReadListener(){
         if(mChildEventListener != null) {
-            mMessagesDatabaseReference.removeEventListener(mChildEventListener);
+            mUsersDatabaseReference.removeEventListener(mChildEventListener);
             mChildEventListener = null;
         }
     }

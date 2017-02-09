@@ -104,6 +104,7 @@ public class MainActivity extends AppCompatActivity {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Intent intent = new Intent(MainActivity.this, ChatRoom.class);
                 intent.putExtra("receiver", mUserAdapter.getItem(position).getEmail());
+                intent.putExtra("receiverName",mUserAdapter.getItem(position).getName());
                 intent.putExtra("sender", mUsername);
                 startActivity(intent);
             }

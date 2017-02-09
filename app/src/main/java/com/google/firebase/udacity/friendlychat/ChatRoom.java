@@ -15,6 +15,7 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
@@ -42,6 +43,7 @@ public class ChatRoom extends AppCompatActivity {
     private FirebaseDatabase mFirebaseDatabase;
     private DatabaseReference mMessagesDatabaseReference;
     private ChildEventListener mChildEventListener;
+    private String mReceiverNickName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,6 +54,10 @@ public class ChatRoom extends AppCompatActivity {
 
         mUsername = bundle.getString("sender");
         mReceiverName = bundle.getString("receiver");
+        mReceiverNickName = bundle.getString("receiverName");
+
+        TextView tV = (TextView) findViewById(R.id.receiverNickNameText);
+        tV.setText(mReceiverNickName);
 
         mFirebaseDatabase = FirebaseDatabase.getInstance();
         mMessagesDatabaseReference = mFirebaseDatabase.getReference().child("messages");

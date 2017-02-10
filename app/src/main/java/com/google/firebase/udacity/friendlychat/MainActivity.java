@@ -1,10 +1,14 @@
 package com.google.firebase.udacity.friendlychat;
 
+import android.app.NotificationManager;
+import android.content.Context;
 import android.content.Intent;
+import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.app.NotificationCompat;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.TextWatcher;
@@ -64,6 +68,7 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseAuth.AuthStateListener mAuthStateListener;
     private FirebaseStorage mFirebaseStorage;
     private StorageReference mChatPhotosStorageReference;
+    private NotificationManager mNotificationManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -243,6 +248,56 @@ public class MainActivity extends AppCompatActivity {
         }
         detachDatabaseReadListener();
         mMessageAdapter.clear();
+        //attachBackgroundReadListener();
+    }
+
+    public void attachBackgroundReadListener(){
+        mMessagesDatabaseReference.addChildEventListener(new ChildEventListener() {
+
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+
+                FriendlyMessageReceived message = dataSnapshot.getValue(FriendlyMessageReceived.class);
+
+                if (true) {
+
+                    mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+                    NotificationCompat.Builder mBuilder = (NotificationCompat.Builder) new NotificationCompat.Builder(MainActivity.this)
+                            .setSmallIcon(R.mipmap.ic_launcher)
+                            .setContentTitle("New Message from " + message.getName())
+                            .setContentText(message.getText())
+                            .setOnlyAlertOnce(true)
+                            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION));
+                    mBuilder.setAutoCancel(true);
+                    mBuilder.setLocalOnly(false);
+
+
+                    mNotificationManager.notify(2, mBuilder.build());
+
+                }
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
     }
 
     private void onSignedInInitialize(String name){

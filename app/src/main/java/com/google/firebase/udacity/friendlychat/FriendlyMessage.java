@@ -11,6 +11,7 @@ public class FriendlyMessage {
     private String receiverName;
     private String photoUrl;
     private Map time;
+    private String status;
 
     public FriendlyMessage() {
     }
@@ -21,6 +22,7 @@ public class FriendlyMessage {
         this.receiverName = receiverName;
         this.photoUrl = photoUrl;
         this.time = ServerValue.TIMESTAMP;
+        this.status = "send";
     }
 
     public String getText() {
@@ -61,6 +63,14 @@ public class FriendlyMessage {
 
     public void setTime(Map time) {
         this.time = time;
+    }
+
+    public void setStatus(String status){
+        this.status = status;
+    }
+
+    public String getStatus(){
+        return status;
     }
 
 }
